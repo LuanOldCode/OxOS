@@ -14,6 +14,8 @@
 ----------------------------------------
 ```
 
+![image](https://github.com/user-attachments/assets/50eed147-5100-4954-85cd-baa6b9523f61)
+
 
 > ⚠️ **Experimental Project**  
 > **OxOS** is a work-in-progress operating system developed for educational and experimental purposes. It has only been tested in **very specific environments** and is not intended for production use.
