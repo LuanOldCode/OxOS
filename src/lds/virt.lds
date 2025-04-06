@@ -1,29 +1,49 @@
+OUTPUT_ARCH( "riscv" )
+
+ENTRY( _start )
+
 MEMORY
 {
-  RAM : ORIGIN = 0x80000000, LENGTH = 512K
+  ram   (rwx) : ORIGIN = 0x80000000, LENGTH = 128M
 }
 
-ENTRY(_start);
+PHDRS
+{
+  text PT_LOAD;
+  data PT_LOAD;
+  bss PT_LOAD;
+}
 
 SECTIONS
 {
   .text : {
-    *(.text.entry)
-    *(.text .text.*)
-  } > RAM
-
+    PROVIDE(_text_start = .);
+    *(.text.init) *(.text .text.*)
+    PROVIDE(_text_end = .);
+  } >ram AT>ram :text
+   PROVIDE(_global_pointer = .);
   .rodata : {
+    PROVIDE(_rodata_start = .);
     *(.rodata .rodata.*)
-  } > RAM
+    PROVIDE(_rodata_end = .);
+  } >ram AT>ram :text
 
   .data : {
-    *(.data .data.*)
-  } > RAM
+    . = ALIGN(4096);
+    PROVIDE(_data_start = .);
+    *(.sdata .sdata.*) *(.data .data.*)
+    PROVIDE(_data_end = .);
+  } >ram AT>ram :data
 
-  .bss : {
-    *(.bss .bss.*)
-    *(COMMON)
-  } > RAM
+  .bss :{
+    PROVIDE(_bss_start = .);
+    *(.sbss .sbss.*) *(.bss .bss.*)
+    PROVIDE(_bss_end = .);
+  } >ram AT>ram :bss
 
-  _stack_start = ORIGIN(RAM) + LENGTH(RAM);
+  PROVIDE(_memory_start = ORIGIN(ram));
+  PROVIDE(_stack = _bss_end + 0x80000);
+  PROVIDE(_memory_end = ORIGIN(ram) + LENGTH(ram));
+  PROVIDE(_heap_start = _stack);
+  PROVIDE(_heap_size = _memory_end - _stack);
 }
