@@ -1,5 +1,20 @@
 # OxOS 
 
+```
+ _____              __   ____           
+/\  __`\          /'__`\/\  _`\         
+\ \ \/\ \   __  _/\ \/\ \ \,\ \_\       
+ \ \ \ \ \ /\ \/'\ \ \ \ \/_\__ \       
+  \ \ \_\ \\/>  </\ \ \_\ \/\ \ \ \     
+   \ \_____\/\_/\_\\ \____/\ `\____\    
+    \/_____/\//\/_/ \/___/  \/_____/    
+
+----------------------------------------
+          OxOS - Versão X.X.XXX
+----------------------------------------
+```
+
+
 > ⚠️ **Experimental Project**  
 > **OxOS** is a work-in-progress operating system developed for educational and experimental purposes. It has only been tested in **very specific environments** and is not intended for production use.
 
