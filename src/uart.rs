@@ -10,12 +10,18 @@ pub struct Uart {
 }
 
 impl Write for Uart {
-	fn write_str(&mut self, out: &str) -> Result<(), Error> {
-		for c in out.bytes() {
-			self.put(c);
-		}
-		Ok(())
-	}
+    fn write_str(&mut self, out: &str) -> Result<(), core::fmt::Error> {
+        for byte in out.bytes() {
+            match byte {
+                b'\n' => {
+                    self.put(b'\r'); // Add carriage return before newline
+                    self.put(b'\n');
+                }
+                _ => self.put(byte),
+            }
+        }
+        Ok(())
+    }
 }
 
 impl Uart {
