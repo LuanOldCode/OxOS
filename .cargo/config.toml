@@ -1,8 +1,10 @@
 [build]
-target = "x86_64-oxos.json"
+target = "riscv64imac-unknown-none-elf"
 
-[target.'cfg(target_os = "none")']
-runner = "bootimage runner"
+[target.riscv64imac-unknown-none-elf]
+rustflags = [
+    "-C", "link-arg=-Tsrc/lds/virt.lds",
+]
 
 [unstable]
 build-std-features = ["compiler-builtins-mem"]

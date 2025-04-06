@@ -1,2 +1,2 @@
-cargo bootimage
-qemu-system-x86_64 -drive format=raw,file=target/x86_64-oxos/debug/bootimage-OxOS.bin
+cargo build --release
+qemu-system-riscv64 -machine virt -bios none -kernel target/riscv64imac-unknown-none-elf/release/OxOS
