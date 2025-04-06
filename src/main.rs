@@ -2,6 +2,23 @@
 #![no_main]
 
 use core::panic::PanicInfo;
+use core::fmt::Write;
+
+pub mod uart;
+
+static LOGO: &str = r"
+ _____              __   ____
+/\  __`\          /'__`\/\  _`\
+\ \ \/\ \   __  _/\ \/\ \ \,\ \_\
+ \ \ \ \ \ /\ \/'\ \ \ \ \/_\__ \
+  \ \ \_\ \\/>  </\ \ \_\ \/\ \ \ \
+   \ \_____\/\_/\_\\ \____/\ `\____\
+    \/_____/\//\/_/ \/___/  \/_____/
+
+------------------------------------
+       OxOS - Version 0.0.001
+------------------------------------
+";
 
 #[unsafe(no_mangle)]
 pub extern "C" fn _start() -> ! {
@@ -9,24 +26,12 @@ pub extern "C" fn _start() -> ! {
 
 	my_uart.init();
 
-    my_uart.put(b'H');
-    my_uart.put(b'E');
-    my_uart.put(b'L');
-    my_uart.put(b'L');
-    my_uart.put(b'O');
-    my_uart.put(b'W');
-    my_uart.put(b'O');
-    my_uart.put(b'R');
-    my_uart.put(b'L');
-    my_uart.put(b'D');
-    // Aqui vai o código de inicialização do sistema
+    let _ = my_uart.write_str(LOGO);
+
     loop {}
 }
 
-// Obrigatório sem std
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
-
-pub mod uart;
