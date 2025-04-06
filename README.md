@@ -72,4 +72,16 @@ OxOS is inspired by:
 
 ## 🧪 Status
 
-This project is under **active development** and may break or change frequently. Contributions, suggestions, and feedback are welcome!
+**OxOS** is in the **early stages of development**, currently focusing on setting up the bootloader, basic memory management, and kernel structure.
+
+🔧 **Planned Tasks / Upcoming Features:**
+
+- [ ] **VGA text mode** output support  
+- [ ] Basic **installation BIOS**  
+- [ ] Process initialization and simple task management  
+- [ ] Minimalist **file system**  
+- [ ] Basic hardware drivers (keyboard, disk, etc.)  
+- [ ] Simple interactive **shell**  
+- [ ] **Boot logging** system  
+- [ ] Testing with **QEMU** and, if possible, real hardware
+
