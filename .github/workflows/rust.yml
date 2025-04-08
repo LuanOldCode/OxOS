@@ -16,6 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: require 
+      run: rustup target add riscv64imac-unknown-none-elf
     - name: Build
       run: cargo build --verbose
     - name: Run tests
