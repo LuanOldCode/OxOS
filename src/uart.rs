@@ -2,8 +2,7 @@
 // UART routines and driver
 
 use core::convert::TryInto;
-use core::fmt::Write;
-use core::fmt::Error;
+use core::fmt::{self, Write,Error};
 
 pub struct Uart {
 	base_address: usize,
@@ -14,8 +13,7 @@ impl Write for Uart {
         for byte in out.bytes() {
             match byte {
                 b'\n' => {
-                    self.put(b'\r'); // Add carriage return before newline
-                    self.put(b'\n');
+                    self.endl();
                 }
                 _ => self.put(byte),
             }
@@ -97,7 +95,11 @@ impl Uart {
 
 	pub fn put(&mut self, c: u8) {
 		let ptr = self.base_address as *mut u8;
+		const UART_LSR_EMPTY_MASK: u8 = 0x40;
 		unsafe {
+			// Wait until the transmitter holding register is empty.
+			while (ptr.add(5).read_volatile() & UART_LSR_EMPTY_MASK) == 0 {}
+			// Write the character to the transmitter holding register.
 			ptr.add(0).write_volatile(c);
 		}
 	}
@@ -115,4 +117,34 @@ impl Uart {
 			}
 		}
 	}
+
+	pub fn endl(&mut self){
+		self.put(b'\r');
+		self.put(b'\n');
+	}
+}
+
+#[macro_export]
+macro_rules! uart_hex_fmt {
+    ($uart:expr, $num:expr, $pad:expr) => {{
+        // Cast the number to usize so it works for any integer type.
+        let num_val = $num as usize;
+        // Ensure the pad value is treated as usize.
+        let pad: usize = $pad as usize;
+        // Loop from pad-1 down to 0 to output each nibble.
+        let mut count = pad;
+        while count > 0 {
+            count -= 1;
+            let shift = count * 4;
+            // Extract a nibble (4 bits) from num_val.
+            let nibble = ((num_val >> shift) & 0xF) as u8;
+            // Convert the nibble to its ASCII hex character.
+            let c = if nibble < 10 {
+                b'0' + nibble
+            } else {
+                b'a' + (nibble - 10)
+            };
+            $uart.put(c);
+        }
+    }};
 }
