@@ -7,8 +7,9 @@ use core::ptr::{read_volatile, write_volatile};
 
 #[macro_use]
 mod uart;
-
 use uart::Uart;
+
+mod vga;
 
 const PCI_ECAM_BASE: usize = 0x30000000;
 const VGA_VENDOR_ID: u16 = 0x1234;
@@ -16,22 +17,8 @@ const VGA_DEVICE_ID: u16 = 0x1111;
 
 const PCI_VENDOR_ID_OFFSET: usize = 0x00;
 const PCI_DEVICE_ID_OFFSET: usize = 0x02;
-const PCI_BAR0_OFFSET: usize = 0x10;
-const PCI_BAR2_OFFSET: usize = 0x18;
-
-// Bochs VBE interface
-const DISPI_INDEX_ID: u16 = 0;
-const DISPI_INDEX_XRES: u16 = 1;
-const DISPI_INDEX_YRES: u16 = 2;
-const DISPI_INDEX_BPP: u16 = 3;
-const DISPI_INDEX_ENABLE: u16 = 4;
-
-const DISPI_ID_MAGIC: u16 = 0xB0C5;
-const DISPI_ENABLED: u16 = 0x01;
-const DISPI_LFB_ENABLED: u16 = 0x40;
-
-const WIDTH: usize = 1024;
-const HEIGHT: usize = 768;
+const PCI_BAR0_OFFSET: u16 = 0x10;
+const PCI_BAR2_OFFSET: u16 = 0x18;
 
 static LOGO: &str = r"
  _____              __   ____
@@ -57,8 +44,22 @@ fn pci_config_read32(bus: u8, device: u8, function: u8, offset: u16) -> u32 {
     unsafe { core::ptr::read_volatile(addr as *const u32) }
 }
 
+// Function to read a 32-bit word from PCI config space
+fn pci_config_write32(bus: u8, device: u8, function: u8, offset: u16, data: u32) {
+    let addr: usize = PCI_ECAM_BASE
+        | ((bus as usize) << 20)
+        | ((device as usize) << 15)
+        | ((function as usize) << 12)
+        | ((offset as usize) & 0xFFC);
+
+    let ptr = addr as *mut u32;
+    unsafe { ptr.write_volatile(data) }
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn _start() -> ! {
+
+    let fb_base = 0x5000_0000 as *mut u8;
 
     // Create & init UART
     let mut my_uart = uart::Uart::new(0x1000_0000);
@@ -108,6 +109,48 @@ pub extern "C" fn _start() -> ! {
         let _ = my_uart.write_str(", Prog IF: 0x");
         uart_hex_fmt!(my_uart, prog_if as u32, 2);
         my_uart.endl();
+
+        unsafe {
+            let io_base = {
+                // read bar0 size & restore
+                pci_config_write32(bus, device, function, PCI_BAR0_OFFSET, 0xFFFF_FFFF);
+                let fb_size = !(pci_config_read32(bus, device, function, PCI_BAR0_OFFSET) & !0xF) as usize + 1;
+
+                // read bar2 size & reset
+                let io_base = fb_base.add(fb_size);
+                pci_config_write32(bus, device, function, PCI_BAR2_OFFSET, 0xFFFF_FFFF);
+                let io_size = !(pci_config_read32(bus, device, function, PCI_BAR2_OFFSET) & !0xF) as usize + 1;
+                let io_base = fb_base.add(fb_size);
+
+                // bar0
+                pci_config_write32(bus, device, function, PCI_BAR0_OFFSET, fb_base as u32 | 8);
+
+                // bar1
+                pci_config_write32(bus, device, function, PCI_BAR2_OFFSET, io_base as u32 | 8);
+                
+                // header command Memory Space enable 
+                let cmd = pci_config_read32(bus, device, function, 4);
+                pci_config_write32(bus, device, function, 4, cmd | 0x0002);
+
+                // Print vendor & device ID's
+                let _ = my_uart.write_str("[VGA]: fb_base: 0x");
+                uart_hex_fmt!(my_uart, fb_base as u32, 8);
+                let _ = my_uart.write_str(" size 0x");
+                uart_hex_fmt!(my_uart, fb_size as u32, 8);
+                let _ = my_uart.write_str(" io_base: 0x");
+                uart_hex_fmt!(my_uart, io_base as u32, 8);
+                let _ = my_uart.write_str(" size 0x");
+                uart_hex_fmt!(my_uart, io_size as u32, 8);
+                my_uart.endl();
+
+                io_base
+            };
+
+            vga::set_mode13(io_base);
+
+            fb_base.write_bytes(0, 320 * 200);
+        };
+
     }
 
     // Write decorator...
