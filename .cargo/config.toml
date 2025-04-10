@@ -1,11 +1,6 @@
 [build]
-target = "riscv64imac-unknown-none-elf"
+target = "riscv64gc-unknown-none-elf"
+rustflags = ["-C", "link-args=-Tsrc/riscv.lds"]
 
-[target.riscv64imac-unknown-none-elf]
-rustflags = [
-    "-C", "link-arg=-Tsrc/lds/virt.lds",
-]
-
-[unstable]
-build-std-features = ["compiler-builtins-mem"]
-build-std = ["core", "compiler_builtins", "alloc"]
+[target.riscv64gc-unknown-none-elf]
+runner = "qemu-system-riscv64 -M virt -device virtio-vga -serial mon:stdio -kernel"

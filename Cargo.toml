@@ -4,14 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+embedded-graphics = "0.8.1"
+
+[profile.release]
+lto = true
+opt-level = 3
+panic = "abort"
 
 [profile.dev]
 panic = "abort"
-codegen-units = 1
-lto = false
-incremental = false
-
-[profile.release]
-panic = "abort"
-codegen-units = 1
-lto = true

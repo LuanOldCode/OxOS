@@ -1,13 +1,13 @@
-# OxOS 
+# OxOS
 
 ```
- _____              __   ____           
-/\  __`\          /'__`\/\  _`\         
-\ \ \/\ \   __  _/\ \/\ \ \,\ \_\       
- \ \ \ \ \ /\ \/'\ \ \ \ \/_\__ \       
-  \ \ \_\ \\/>  </\ \ \_\ \/\ \ \ \     
-   \ \_____\/\_/\_\\ \____/\ `\____\    
-    \/_____/\//\/_/ \/___/  \/_____/    
+ _____              __   ____
+/\  __`\          /'__`\/\  _`\
+\ \ \/\ \   __  _/\ \/\ \ \,\ \_\
+ \ \ \ \ \ /\ \/'\ \ \ \ \/_\__ \
+  \ \ \_\ \\/>  </\ \ \_\ \/\ \ \ \
+   \ \_____\/\_/\_\\ \____/\ `\____\
+    \/_____/\//\/_/ \/___/  \/_____/
 
 ----------------------------------------
           OxOS - Versão X.X.XXX
@@ -17,7 +17,7 @@
 ![image](https://github.com/user-attachments/assets/50eed147-5100-4954-85cd-baa6b9523f61)
 
 
-> ⚠️ **Experimental Project**  
+> ⚠️ **Experimental Project**
 > **OxOS** is a work-in-progress operating system developed for educational and experimental purposes. It has only been tested in **very specific environments** and is not intended for production use.
 
 **OxOS** is a minimal operating system written in [Rust](https://www.rust-lang.org/), [C](), [Assembler]() with a focus on learning, performance, and low-level architectural control.
@@ -37,11 +37,15 @@
 
 Before you get started, ensure you have the following:
 
-- A Linux environment or **Windows with WSL**  
+- A Linux environment or **Windows with WSL**
   [Install WSL](https://learn.microsoft.com/pt-br/windows/wsl/install)
 - `rustup`, `cargo`, `gcc`, and `make` installed
 - RISC-V toolchain (e.g., `riscv64-unknown-elf-gcc`)
 
+
+- Rust (riscv64gc-unknown-none-elf)
+  - `rustup target add riscv64gc-unknown-none-elf``
+- qemu-system-riscv64
 ---
 
 ## 🛠️ Building OxOS
@@ -78,12 +82,11 @@ OxOS is inspired by:
 
 🔧 **Planned Tasks / Upcoming Features:**
 
-- [ ] **VGA text mode** output support  
-- [ ] Basic **installation BIOS**  
-- [ ] Process initialization and simple task management  
-- [ ] Minimalist **file system**  
-- [ ] Basic hardware drivers (keyboard, disk, etc.)  
-- [ ] Simple interactive **shell**  
-- [ ] **Boot logging** system  
+- [X] **VGA text mode** output support
+- [ ] Basic **installation BIOS**
+- [ ] Process initialization and simple task management
+- [ ] Minimalist **file system**
+- [ ] Basic hardware drivers (keyboard, disk, etc.)
+- [ ] Simple interactive **shell**
+- [ ] **Boot logging** system
 - [ ] Testing with **QEMU** and, if possible, real hardware
-
