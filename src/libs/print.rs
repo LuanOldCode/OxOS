@@ -1,6 +1,7 @@
+
 macro_rules! print {
     ($($arg:tt)*) => {
-        let _ = write!($crate::stdout(), $($arg)*);
+        let _ = write!(stdout(), $($arg)*);
     };
 }
 
@@ -9,6 +10,6 @@ macro_rules! print {
 #[macro_export]
 macro_rules! println {
     ($($arg:tt)*) => {
-        let _ = writeln!($crate::stdout(), $($arg)*);
+        let _ = writeln!(stdout(), $($arg)*);
     };
 }

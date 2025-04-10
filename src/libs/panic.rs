@@ -1,4 +1,5 @@
-// use core::{arch::asm, panic::PanicInfo};
+// use core::{arch::asm, panic::PanicInfo, fmt::Write};
+
 // use crate::println;
 
 // /// [en] Panic handler that prints panic information and enters an infinite wait loop

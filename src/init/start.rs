@@ -16,12 +16,6 @@ use embedded_graphics::{
 };
 use drivers::sbi;
 
-/// Main entry point for the application
-///
-/// Initializes the VGA graphics mode and draws text and shapes
-///
-/// [en] This function never returns and handles all VGA display operations
-/// [pt-br] Esta função nunca retorna e lida com todas as operações do display VGA
 arch_entry!(init);
 pub fn init() -> ! {
     let fb_base = 0x5000_0000 as *mut u8;
