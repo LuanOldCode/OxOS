@@ -1,5 +1,7 @@
 {
     "files.associations": {
-        "pci.h": "c"
+        "pci.h": "c",
+        "thread": "c",
+        "random": "c"
     }
 }

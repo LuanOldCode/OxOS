@@ -22,6 +22,8 @@
 
 #define EOF 0
 
+void uart_init();
+
 int lib_getc(void);
 
 int lib_putc(char ch);

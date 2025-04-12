@@ -34,14 +34,22 @@ void pci_config_write32(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset,
     *config_addr = data; // write full 32-bit word
 }
 
-size_t pci_bar_size(uint8_t bus, uint8_t slot, uint8_t func, uint8_t BAR){
+struct pci_dev {
+	uint8_t bus;
+	uint8_t slot;
+	uint8_t devfn;
+	unsigned short	vendor;
+	unsigned short	device;
+};
+
+size_t pci_resource_len(struct pci_dev* dev, uint8_t BAR){
 	uint8_t bar_offet = 0x10 + 4*BAR;
-	uint32_t bar_word = pci_config_read32(bus, slot, func, bar_offet);
+	uint32_t bar_word = pci_config_read32(dev->bus, dev->slot, dev->devfn, bar_offet);
 	uint32_t saved_bar = bar_word;
-	pci_config_write32(bus, slot, func, bar_offet, ~0);
-	bar_word = pci_config_read32(bus, slot, func, bar_offet) & (~0b1111);
+	pci_config_write32(dev->bus, dev->slot, dev->devfn, bar_offet, ~0);
+	bar_word = pci_config_read32(dev->bus, dev->slot, dev->devfn, bar_offet) & (~0b1111);
 	bar_word = (~bar_word) + 1;
-	pci_config_write32(bus, slot, func, bar_offet, saved_bar);
+	pci_config_write32(dev->bus, dev->slot, dev->devfn, bar_offet, saved_bar);
 	return bar_word;
 }
 
@@ -158,11 +166,24 @@ int8_t read8(uint32_t addr){
 }
 
 
+int16_t read16(uint32_t addr){
+    int16_t value;
+    __asm__ volatile ("lh %0, 0(%1)" :: "r"(value), "r"(addr): "memory");
+    return value;
+}
+
+
+uint16_t read16u(uint32_t addr){
+    uint16_t value;
+    __asm__ volatile ("lhu %0, 0(%1)" :: "r"(value), "r"(addr): "memory");
+    return value;
+}
+
 void write8(uint32_t addr, uint8_t value){
     __asm__ volatile ("sb %0, 0(%1)" :: "r"(value), "r"(addr): "memory");
 }
 
-void write16(uint32_t addr, uint8_t value){
+void write16(uint32_t addr, uint16_t value){
     __asm__ volatile ("sh %0, 0(%1)" :: "r"(value), "r"(addr): "memory");
 }
 
@@ -467,13 +488,27 @@ void vga_clear(){
 	
 }
 
+typedef enum vga_mode_t {PALLETE, RGBA8888}vga_mode_t;
+
 typedef struct cursor_t
 {
-	uint32_t x, y;
+	uint32_t xres, yres;
+	vga_mode_t mode;
+	int x0, y0;
+	int x, y;
 }cursor_t;
 
 
-void vga_putc(cursor_t* pCursor, uint8_t c, uint8_t palidx){
+void vga_put_pixel(uint32_t x, uint32_t y, cursor_t* pCursor, uint32_t color){
+	if(pCursor->mode == PALLETE){
+		*(VRAM + (pCursor->x + x) + (pCursor->y + y) * pCursor->xres) =  color & 0xff;
+	}
+	else if(pCursor->mode == RGBA8888){
+		((uint32_t*) VRAM)[(pCursor->x + x) + (pCursor->y + y) * pCursor->xres] =  color;
+	}
+}
+
+void vga_putc(cursor_t* pCursor, uint8_t c, uint32_t color){
 	for(uint8_t j=0; j<8; j++)
     {
       	uint8_t cs = charset[j][c];
@@ -481,27 +516,30 @@ void vga_putc(cursor_t* pCursor, uint8_t c, uint8_t palidx){
 		{
 			uint8_t bit = ((cs >> (7-i)) & 1);
 			if(bit)
-      			*(VRAM + (pCursor->x + i) + (pCursor->y + j) * 320) =  palidx;
+				vga_put_pixel(i,j,pCursor,color);
 		}
     }
 	pCursor->x += 8;
 	if(c == '\n'){
-		pCursor->x = 0;
+		pCursor->x = pCursor->x0;
 		pCursor->y += 8;
 	}
 }
 
-void vga_puts(cursor_t* pCursor, char* string, uint8_t palidx){
+void vga_puts(cursor_t* pCursor, char* string, uint32_t color){
+	pCursor->x = pCursor->x0;
+	pCursor->y = pCursor->y0;
 	while(*string){
-		vga_putc(pCursor, *string++, palidx);
+		vga_putc(pCursor, *string++, color);
 	}
 }
 
 vga_flush(cursor_t* pCursor){
-	pCursor->x = 0;
-	pCursor->y = 0;
+	pCursor->x = pCursor->x0;
+	pCursor->y = pCursor->y0;
 }
 
+/*
 int os_main(void) {
     lib_puts("Initializing PCIE Interface...\r\n");
 
@@ -577,7 +615,7 @@ int os_main(void) {
 
 	printf("Changed to graphics mode. Check VGA Device!\n");
 
-	cursor_t cursor;
+	cursor_t cursor = {320, 200, PALLETE, 0, 0, 0, 0};
 	char string[256];
 	uint8_t sz = 0;
 
@@ -595,4 +633,182 @@ int os_main(void) {
     }
 	
     return 0;
+}
+*/
+
+#define VBE_DISPI_INDEX_ID               0x0
+#define VBE_DISPI_INDEX_XRES             0x1
+#define VBE_DISPI_INDEX_YRES             0x2
+#define VBE_DISPI_INDEX_BPP              0x3
+#define VBE_DISPI_INDEX_ENABLE           0x4
+#define VBE_DISPI_INDEX_BANK             0x5
+#define VBE_DISPI_INDEX_VIRT_WIDTH       0x6
+#define VBE_DISPI_INDEX_VIRT_HEIGHT      0x7
+#define VBE_DISPI_INDEX_X_OFFSET         0x8
+#define VBE_DISPI_INDEX_Y_OFFSET         0x9
+#define VBE_DISPI_INDEX_VIDEO_MEMORY_64K 0xa
+
+#define VBE_DISPI_ID0                    0xB0C0
+#define VBE_DISPI_ID1                    0xB0C1
+#define VBE_DISPI_ID2                    0xB0C2
+#define VBE_DISPI_ID3                    0xB0C3
+#define VBE_DISPI_ID4                    0xB0C4
+#define VBE_DISPI_ID5                    0xB0C5
+
+#define VBE_DISPI_DISABLED               0x00
+#define VBE_DISPI_ENABLED                0x01
+#define VBE_DISPI_GETCAPS                0x02
+#define VBE_DISPI_8BIT_DAC               0x20
+#define VBE_DISPI_LFB_ENABLED            0x40
+#define VBE_DISPI_NOCLEARMEM             0x80
+
+#define VBE_DISPI_INDEX_VIDEO_MEMORY_64K 0xa
+
+static void bochs_vga_writeb(uint32_t mmio, uint16_t ioport, uint8_t val)
+{
+	if (ioport < 0x3c0 || ioport > 0x3df)
+		return;
+
+	int offset = ioport - 0x3c0 + 0x400;
+	write8(mmio + offset, val);
+}
+
+static uint16_t bochs_dispi_read(uint32_t mmio, uint16_t reg)
+{
+	uint16_t ret = 0;
+
+	uint32_t offset = 0x500 + (reg << 1);
+	ret = read16(mmio + offset);
+
+	return ret;
+}
+
+static void bochs_dispi_write(uint32_t mmio, uint16_t reg, uint16_t val)
+{
+	uint32_t offset = 0x500 + (reg << 1);
+	write16(mmio + offset, val);
+}
+
+int os_main(void){
+	uart_init();
+
+	lib_puts("Initializing PCIE Interface...\r\n");
+	volatile uint32_t* bar[6] = {0,0,0,0,0,0};
+
+	struct pci_dev dev;
+	dev.bus = 0;
+	dev.slot = 1;
+	dev.devfn = 0;
+	dev.vendor = 0x1234;
+	dev.device = 0x1111;
+	
+	// Setup bar0
+	uint32_t bar0_offset = 0x10;
+	size_t bar0_size = pci_resource_len(&dev, 0);
+	pci_config_write32(0, 1, 0, bar0_offset, (VRAM_BASE + 8));
+	bar[0] = (volatile uint32_t*)pci_config_read32(0, 1, 0, bar0_offset);
+	printf("BAR0: [%x-%x] %d MB\n", bar[0], bar[0]+bar0_size, bar0_size / (1024*1024));
+
+	// Setup bar1
+	uint32_t bar2_offset = 0x18;
+	size_t bar2_size = pci_resource_len(&dev, 2);
+	pci_config_write32(0, 1, 0, bar2_offset, MMIO_BASE);
+	bar[2] = (volatile uint32_t*)pci_config_read32(0, 1, 0, bar2_offset);
+	printf("BAR2: [%x-%x] %d bytes\n", bar[2], bar[2]+bar0_size, bar2_size);
+
+	// Enable memory access
+	uint32_t reg = pci_config_read32(0, 1, 0, 0x04) | 0x02;
+	pci_config_write32(0, 1, 0, 0x04, reg);
+	//reg = pci_config_read32(0, 1, 0, 0x04);
+
+	printf("PCIE BAR mmap:\n");
+	for (size_t i = 0; i < sizeof(bar)/sizeof(bar[0]); i++)
+	{
+		printf(" BAR%d: [0x%08x]\n", i, (uint32_t)bar[i]);
+	}
+
+	uint16_t xres = 1024;
+	uint16_t yres = 768;
+	uint16_t yres_virtual = yres;
+	uint32_t bpp = 32;
+	
+	bochs_vga_writeb(MMIO_BASE, 0x3c0, 0x20); /* unblank */
+
+	bochs_dispi_write(MMIO_BASE, VBE_DISPI_INDEX_ENABLE,      0);
+	bochs_dispi_write(MMIO_BASE, VBE_DISPI_INDEX_BPP,         bpp);
+	bochs_dispi_write(MMIO_BASE, VBE_DISPI_INDEX_XRES,        xres);
+	bochs_dispi_write(MMIO_BASE, VBE_DISPI_INDEX_YRES,        yres);
+	bochs_dispi_write(MMIO_BASE, VBE_DISPI_INDEX_BANK,        0);
+	bochs_dispi_write(MMIO_BASE, VBE_DISPI_INDEX_VIRT_WIDTH,  xres);
+	bochs_dispi_write(MMIO_BASE, VBE_DISPI_INDEX_VIRT_HEIGHT, yres_virtual);
+	bochs_dispi_write(MMIO_BASE, VBE_DISPI_INDEX_X_OFFSET,    0);
+	bochs_dispi_write(MMIO_BASE, VBE_DISPI_INDEX_Y_OFFSET,    0);
+
+	bochs_dispi_write(MMIO_BASE, VBE_DISPI_INDEX_ENABLE, VBE_DISPI_ENABLED | VBE_DISPI_LFB_ENABLED);
+
+	cursor_t cursor = {xres, yres, RGBA8888, 0, 0, 0, 0};
+
+	char* str = "  _____              __   ____\n"
+	" /\\  __`\\          /'__`\\/\\  _`\\\n"
+	" \\ \\ \\/\\ \\   __  _/\\ \\/\\ \\ \\,\\ \\_\\\n"
+	"  \\ \\ \\ \\ \\ /\\ \\/'\\ \\ \\ \\ \\/_\\__ \\\n"
+	"   \\ \\ \\_\\ \\/>  </\\ \\ \\_\\ \\/\\ \\ \\ \\\n"
+	"    \\ \\_____\\/\\_/\\_\\ \\____/\\ `\\____\\\n"
+	"     \\/_____/\\//\\/_/ \\/___/  \\/_____/\n"
+	"\n"
+	"  ____________________________________\n"
+	"/\\                                    \\\n"
+	"\\ \\       OxOS - Version 0.0.001       \\\n"
+	" \\ \\     Paulo-D2000 & LuanOldCode      \\\n"
+	"  \\ \\____________________________________\\\n"
+	"   \\/____________________________________/";
+
+	int xvel = 4, yvel = 4;
+	while (1){
+		vga_flush(&cursor);
+
+		for (size_t j = 0; j < yres; j++)
+		{
+			for (size_t i = 0; i < xres; i++)
+			{
+				uint8_t r = (255*i) / xres;
+				uint8_t g = (255*j) / yres;
+				uint8_t b = 64;
+				uint8_t a = 255;
+				uint32_t pixel = (a << 24) | (r << 16) | (g << 8) | b;
+				((uint32_t*)VRAM)[i+j*xres] = pixel;
+			}
+		}
+
+		vga_puts(&cursor, str, 0xffffffff);
+	
+		for (size_t i = 0; i < 8192; i++)
+		{
+			printf("sleep...\n");
+		}
+
+		if(cursor.x > xres){
+			cursor.x0 = xres - (cursor.x - cursor.x0);
+			xvel *= -1;
+		}
+		else if(cursor.x0 < 0){
+			cursor.x0 = 0;
+			xvel *= -1;
+		}
+		else
+			cursor.x0 += xvel;
+
+		if(cursor.y > (yres-8)){
+			cursor.y0 = (yres-8) - (cursor.y - cursor.y0);
+			yvel *= -1;
+		}
+		else if(cursor.y0 < 0){
+			cursor.y0 = 0;
+			yvel *= -1;
+		}
+		else
+			cursor.y0 += yvel;
+	}
+
+	return 0;
 }
